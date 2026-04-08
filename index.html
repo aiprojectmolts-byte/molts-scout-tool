@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE MOLTS - 採用スカウトメッセージ生成</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --primary: #1a2a4a;
+    --primary-light: #2e4a7a;
+    --accent: #c8a45c;
+    --accent-hover: #dbb86e;
+    --bg: #f7f6f3;
+    --card: #ffffff;
+    --text: #2c2c2c;
+    --text-light: #6b6b6b;
+    --border: #e2e0db;
+    --success: #2d8a56;
+    --success-bg: #edf7f0;
+    --error: #c0392b;
+    --error-bg: #fdecea;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  .header {
+    background: var(--primary);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-title {
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: 2px;
+  }
+  .header-subtitle {
+    color: var(--accent);
+    font-size: 13px;
+    font-weight: 400;
+    letter-spacing: 1px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .api-status {
+    font-size: 12px;
+    color: #a0a0a0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .api-status .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #555;
+  }
+  .api-status.connected .dot { background: #4ade80; }
+  .btn-settings {
+    padding: 5px 12px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 6px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-settings:hover {
+    border-color: rgba(255,255,255,0.5);
+    color: white;
+  }
+
+  .main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  .setup-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .setup-card.collapsed .setup-body { display: none; }
+  .setup-header {
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+  .setup-header:hover { background: #fafaf8; }
+  .setup-header h2 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-light);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .setup-toggle {
+    font-size: 12px;
+    color: var(--text-light);
+    transition: transform 0.3s;
+  }
+  .setup-card.collapsed .setup-toggle { transform: rotate(-90deg); }
+  .setup-body { padding: 0 24px 20px; }
+  .setup-body p {
+    font-size: 13px;
+    color: var(--text-light);
+    margin-bottom: 14px;
+    line-height: 1.7;
+  }
+  .api-key-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .api-key-input {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: monospace;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .api-key-input:focus { border-color: var(--primary-light); }
+  .btn-save-key {
+    padding: 10px 24px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .btn-save-key:hover { background: var(--primary-light); }
+  .key-saved-msg {
+    font-size: 12px;
+    color: var(--success);
+    margin-top: 8px;
+    display: none;
+  }
+  .key-saved-msg.show { display: block; }
+
+  .generator-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+  }
+  .generator-card h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 20px;
+  }
+
+  .form-group { margin-bottom: 20px; }
+  .form-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .form-hint {
+    font-size: 12px;
+    color: var(--text-light);
+    font-weight: 400;
+    margin-left: 4px;
+  }
+  .platform-select { display: flex; gap: 10px; }
+  .platform-btn {
+    padding: 8px 20px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    background: white;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: var(--text-light);
+  }
+  .platform-btn:hover { border-color: var(--primary-light); color: var(--primary); }
+  .platform-btn.active {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: white;
+  }
+
+  .profile-textarea {
+    width: 100%;
+    height: 220px;
+    padding: 14px 16px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'Noto Sans JP', sans-serif;
+    line-height: 1.7;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .profile-textarea:focus { border-color: var(--primary-light); }
+  .profile-textarea::placeholder { color: #bbb; }
+
+  .msg-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 12px;
+  }
+  .msg-tab {
+    padding: 6px 16px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: white;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: all 0.2s;
+  }
+  .msg-tab:hover { border-color: var(--primary-light); }
+  .msg-tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+
+  .btn-generate {
+    width: 100%;
+    padding: 14px;
+    background: var(--accent);
+    color: var(--primary);
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    letter-spacing: 1px;
+  }
+  .btn-generate:hover { background: var(--accent-hover); }
+  .btn-generate:disabled {
+    background: #d5d5d5;
+    color: #999;
+    cursor: not-allowed;
+  }
+
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 40px;
+    color: var(--text-light);
+    font-size: 14px;
+  }
+  .loading.show { display: block; }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .results-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
+    display: none;
+  }
+  .results-card.show { display: block; }
+  .results-card h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--primary);
+    margin-bottom: 20px;
+  }
+  .message-block { margin-bottom: 24px; }
+  .message-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary-light);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .message-content {
+    background: #fafaf8;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    font-size: 14px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+  }
+  .btn-copy {
+    padding: 5px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: all 0.2s;
+  }
+  .btn-copy:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-copy.copied {
+    background: var(--success-bg);
+    border-color: var(--success);
+    color: var(--success);
+  }
+  .btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    margin-top: 12px;
+  }
+  .btn-download:hover { background: var(--primary-light); }
+
+  .error-box {
+    background: var(--error-bg);
+    border: 1px solid #f5c6cb;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: var(--error);
+    margin-bottom: 20px;
+    display: none;
+  }
+  .error-box.show { display: block; }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s;
+    z-index: 1000;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--error); }
+
+  .candidate-name-group { position: relative; }
+  .candidate-name-input {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: 'Noto Sans JP', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .candidate-name-input:focus { border-color: var(--primary-light); }
+  .candidate-name-input::placeholder { color: #bbb; }
+  .autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    max-height: 180px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+  }
+  .autocomplete-list.show { display: block; }
+  .autocomplete-item {
+    padding: 10px 14px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .autocomplete-item:hover { background: #f0efec; }
+
+  .history-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .history-card.collapsed .history-body { display: none; }
+  .history-header {
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+  .history-header:hover { background: #fafaf8; }
+  .history-header h2 {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .history-count {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-light);
+    background: var(--bg);
+    padding: 2px 10px;
+    border-radius: 10px;
+  }
+  .history-toggle {
+    font-size: 12px;
+    color: var(--text-light);
+    transition: transform 0.3s;
+  }
+  .history-card.collapsed .history-toggle { transform: rotate(-90deg); }
+  .history-body { padding: 0 24px 20px; }
+  .history-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 12px;
+  }
+  .btn-clear-history {
+    padding: 5px 14px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--error);
+    transition: all 0.2s;
+  }
+  .btn-clear-history:hover { border-color: var(--error); background: var(--error-bg); }
+  .history-empty {
+    text-align: center;
+    padding: 24px;
+    font-size: 13px;
+    color: var(--text-light);
+  }
+  .history-item {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .history-item:last-child { margin-bottom: 0; }
+  .history-item-header {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+    background: #fafaf8;
+    gap: 12px;
+  }
+  .history-item-header:hover { background: #f3f2ef; }
+  .history-item-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    min-width: 0;
+  }
+  .history-date {
+    font-size: 12px;
+    color: var(--text-light);
+    white-space: nowrap;
+  }
+  .history-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .history-badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .history-badge.first { background: #e8f0fe; color: #1a56db; }
+  .history-badge.second { background: #fef3e2; color: #b45309; }
+  .history-badge.interview { background: #e8f5e9; color: #2d8a56; }
+  .history-badge.platform {
+    background: var(--bg);
+    color: var(--text-light);
+    border: 1px solid var(--border);
+  }
+  .history-item-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+  .history-item-toggle {
+    font-size: 11px;
+    color: var(--text-light);
+    transition: transform 0.3s;
+  }
+  .history-item.collapsed .history-item-toggle { transform: rotate(-90deg); }
+  .history-item-body {
+    padding: 14px 16px;
+    border-top: 1px solid var(--border);
+  }
+  .history-item.collapsed .history-item-body { display: none; }
+  .history-msg-content {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.8;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 10px;
+  }
+  .history-item-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .history-profile-toggle {
+    font-size: 12px;
+    color: var(--primary-light);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    text-decoration: underline;
+  }
+  .history-profile-toggle:hover { color: var(--primary); }
+  .history-profile-content {
+    display: none;
+    background: #f7f6f3;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: 8px;
+    color: var(--text-light);
+  }
+  .history-profile-content.show { display: block; }
+
+  .gdrive-status {
+    font-size: 12px;
+    color: #a0a0a0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .gdrive-status .dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #555;
+  }
+  .gdrive-status.connected .dot { background: #4285f4; }
+  .btn-gdrive {
+    padding: 5px 12px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.25);
+    border-radius: 6px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.7);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-gdrive:hover {
+    border-color: rgba(255,255,255,0.5);
+    color: white;
+  }
+
+  .footer {
+    text-align: center;
+    padding: 24px;
+    font-size: 12px;
+    color: #bbb;
+  }
+
+  /* 重複送付警告モーダル */
+  .duplicate-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+  }
+  .duplicate-overlay.show {
+    display: flex;
+  }
+  .duplicate-modal {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 32px;
+    max-width: 480px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  }
+  .duplicate-modal h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--error);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .duplicate-modal p {
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text);
+    margin-bottom: 24px;
+  }
+  .duplicate-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+  }
+  .btn-duplicate-cancel {
+    padding: 10px 24px;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--text-light);
+    transition: all 0.2s;
+  }
+  .btn-duplicate-cancel:hover {
+    border-color: var(--primary-light);
+    color: var(--primary);
+  }
+  .btn-duplicate-continue {
+    padding: 10px 24px;
+    background: var(--accent);
+    color: var(--primary);
+    border: none;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-duplicate-continue:hover {
+    background: var(--accent-hover);
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-title">THE MOLTS</div>
+    <div class="header-subtitle">採用スカウトメッセージ生成システム</div>
+  </div>
+  <div class="header-right">
+    <div class="gdrive-status" id="gdriveStatus">
+      <span class="dot"></span>
+      <span>Drive未接続</span>
+    </div>
+    <button class="btn-gdrive" id="gdriveBtn" onclick="signInGoogle()">Googleログイン</button>
+    <div class="api-status" id="apiStatus">
+      <span class="dot"></span>
+      <span id="apiStatusText">未接続</span>
+    </div>
+    <button class="btn-settings" onclick="toggleSetup()">⚙ 設定</button>
+  </div>
+</div>
+
+<div class="main">
+
+  <div class="setup-card collapsed" id="setupCard">
+    <div class="setup-header" onclick="toggleSetup()">
+      <h2>🔑 APIキー設定</h2>
+      <span class="setup-toggle">▼</span>
+    </div>
+    <div class="setup-body">
+      <p>
+        AnthropicのAPIキーを入力してください。一度保存すれば次回以降は入力不要です。<br>
+        APIキーの取得: <a href="https://console.anthropic.com/settings/keys" target="_blank" style="color: var(--primary-light);">https://console.anthropic.com/settings/keys</a>
+      </p>
+      <div class="api-key-row">
+        <input type="password" class="api-key-input" id="apiKeyInput" placeholder="sk-ant-api03-...">
+        <button class="btn-save-key" onclick="saveApiKey()">保存</button>
+      </div>
+      <div class="key-saved-msg" id="keySavedMsg">✓ APIキーは保存済みです。変更する場合は新しいキーを入力して「保存」を押してください。</div>
+    </div>
+  </div>
+
+  <div class="generator-card">
+    <h2>スカウトメッセージを生成する</h2>
+
+    <div class="form-group" id="platformGroup">
+      <label class="form-label">送付媒体を選択</label>
+      <div class="platform-select">
+        <button class="platform-btn" data-platform="LinkedIn"  onclick="selectPlatform(this, 'LinkedIn')">LinkedIn</button>
+        <button class="platform-btn" data-platform="YOUTRUST"  onclick="selectPlatform(this, 'YOUTRUST')">YOUTRUST</button>
+        <button class="platform-btn" data-platform="Wantedly"  onclick="selectPlatform(this, 'Wantedly')">Wantedly</button>
+      </div>
+    </div>
+
+    <div class="form-group candidate-name-group" id="candidateNameGroup">
+      <label class="form-label">候補者名</label>
+      <input type="text" class="candidate-name-input" id="candidateNameInput" placeholder="候補者の名前を入力" autocomplete="off">
+      <div class="autocomplete-list" id="autocompleteList"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">生成するメッセージ</label>
+      <div class="msg-tabs">
+        <button class="msg-tab" data-type="first"      onclick="selectMsgType(this, 'first')">初回メッセージ</button>
+        <button class="msg-tab" data-type="second"     onclick="selectMsgType(this, 'second')">2回目（SNS補助）</button>
+        <button class="msg-tab" data-type="interview"  onclick="selectMsgType(this, 'interview')">面談設定</button>
+      </div>
+    </div>
+
+    <div class="form-group" id="interviewPatternGroup" style="display: none;">
+      <label class="form-label">面談設定パターン</label>
+      <div class="msg-tabs">
+        <button class="msg-tab active" data-pattern="url" onclick="selectInterviewPattern(this, 'url')">① URL送付版</button>
+        <button class="msg-tab" data-pattern="ask" onclick="selectInterviewPattern(this, 'ask')">② 候補日時確認版</button>
+      </div>
+    </div>
+
+    <div class="form-group" id="profileGroup">
+      <label class="form-label">
+        候補者のプロフィール情報
+        <span class="form-hint">— 媒体のページからCommand+Aで全選択、Command+Cでコピーして貼り付け</span>
+      </label>
+      <textarea class="profile-textarea" id="profileInput" placeholder="ここにプロフィール情報を貼り付けてください..."></textarea>
+    </div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <button class="btn-generate" id="generateBtn" onclick="generateMessage()">
+      スカウトメッセージを生成する
+    </button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>メッセージを生成しています...</p>
+    <p style="font-size: 12px; color: #aaa; margin-top: 8px;">通常1〜2分ほどかかります</p>
+  </div>
+
+  <div class="results-card" id="resultsCard">
+    <h2>生成結果</h2>
+    <div class="message-block">
+      <div class="message-label">
+        <span id="resultLabel"></span>
+        <button class="btn-copy" onclick="copyMessage()">コピー</button>
+      </div>
+      <div class="message-content" id="messageContent"></div>
+    </div>
+    <button class="btn-download" onclick="downloadMessage()">
+      📄 テキストファイルとしてダウンロード
+    </button>
+  </div>
+
+  <div class="history-card collapsed" id="historyCard">
+    <div class="history-header" onclick="toggleHistory()">
+      <h2>生成履歴 <span class="history-count" id="historyCount">0件</span></h2>
+      <span class="history-toggle">▼</span>
+    </div>
+    <div class="history-body" id="historyBody">
+      <div class="history-toolbar">
+        <button class="btn-clear-history" onclick="clearHistory()">履歴をすべて削除</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">THE MOLTS Scout System — Powered by Claude API</div>
+<div class="toast" id="toast"></div>
+
+<div class="duplicate-overlay" id="duplicateOverlay">
+  <div class="duplicate-modal">
+    <h3>⚠ 重複送付の警告</h3>
+    <p id="duplicateMessage"></p>
+    <div class="duplicate-modal-actions">
+      <button class="btn-duplicate-cancel" onclick="closeDuplicateModal(true)">キャンセル</button>
+      <button class="btn-duplicate-continue" onclick="closeDuplicateModal(false)">続けて生成する</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+const STORAGE_KEY_API_KEY  = 'molts_api_key';
+const STORAGE_KEY_PLATFORM = 'molts_platform';
+const STORAGE_KEY_MSG_TYPE = 'molts_msgType';
+const STORAGE_KEY_PROFILE  = 'molts_profile';
+const STORAGE_KEY_PROFILES = 'molts_saved_profiles';
+const STORAGE_KEY_HISTORY  = 'molts_history';
+
+// ============================================================
+// Google Drive 連携設定
+// ------------------------------------------------------------
+// 【セットアップ手順】
+// 1. Google Cloud Console (https://console.cloud.google.com/) にアクセス
+// 2. プロジェクトを作成（または既存プロジェクトを選択）
+// 3. 左メニュー「APIとサービス」>「ライブラリ」を開き
+//    「Google Drive API」を検索して「有効にする」をクリック
+// 4. 左メニュー「APIとサービス」>「OAuth同意画面」を設定
+//    - ユーザーの種類: 組織内利用なら「内部」、それ以外は「外部」
+//    - アプリ名・サポートメールなどを入力
+//    - スコープに「../auth/drive.file」を追加
+//    - 外部の場合はテストユーザーに使用するGoogleアカウントを追加
+//    - 「公開ステータス」を本番にするか、テストユーザーを登録
+// 5. 左メニュー「APIとサービス」>「認証情報」
+//    >「認証情報を作成」>「OAuthクライアントID」
+//    - アプリケーションの種類: 「ウェブアプリケーション」
+//    - 「承認済みの JavaScript オリジン」に
+//      このHTMLを配信するURL を追加
+//      （例: https://example.com  や  http://localhost:8080）
+//    - 「作成」をクリック
+// 6. 表示されるクライアントIDを下の GOOGLE_CLIENT_ID に設定
+// ============================================================
+const GOOGLE_CLIENT_ID   = '385068009783-fd25fil0kk3hijr1varknvep1mrm3phv.apps.googleusercontent.com';
+const DRIVE_FOLDER_NAME  = 'MOLTS_ScoutData';
+const DRIVE_PROFILES_FILE = 'molts_profiles.json';
+const DRIVE_HISTORY_FILE  = 'molts_history.json';
+
+let selectedPlatform        = 'LinkedIn';
+let selectedMsgType         = 'first';
+let selectedInterviewPattern = 'url';
+let currentMessage          = '';
+let candidateName           = '';
+
+// メモリキャッシュ（起動時にDriveまたはlocalStorageから読み込む）
+let cachedProfiles = {};
+let cachedHistory  = [];
+
+// ============================================================
+// DriveStorage — Google Drive API v3 ラッパー
+// ============================================================
+const DriveStorage = {
+  accessToken: null,
+  folderId: null,
+  fileIds: {},
+
+  isAuthenticated() {
+    return !!this.accessToken;
+  },
+
+  async apiRequest(url, options = {}) {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': 'Bearer ' + this.accessToken,
+        ...(options.headers || {})
+      }
+    });
+    if (res.status === 401) {
+      this.accessToken = null;
+      updateGdriveStatus(false);
+      throw new Error('Google Drive認証が切れました。再ログインしてください。');
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || 'Drive API Error: ' + res.status);
+    }
+    return res;
+  },
+
+  _ensureFolderPromise: null,
+
+  async ensureFolder() {
+    if (this.folderId) return this.folderId;
+    if (this._ensureFolderPromise) return this._ensureFolderPromise;
+
+    this._ensureFolderPromise = (async () => {
+      try {
+        // --- 検索クエリを構築 ---
+        const q = "name='" + DRIVE_FOLDER_NAME + "' and mimeType='application/vnd.google-apps.folder' and trashed=false";
+        const searchUrl = 'https://www.googleapis.com/drive/v3/files'
+          + '?q=' + encodeURIComponent(q)
+          + '&fields=files(id,name,createdTime)'
+          + '&spaces=drive'
+          + '&orderBy=createdTime'
+          + '&pageSize=100';
+
+        console.log('[DriveStorage] ensureFolder: 検索クエリ =', q);
+        console.log('[DriveStorage] ensureFolder: 検索URL =', searchUrl);
+
+        const res = await this.apiRequest(searchUrl);
+        const data = await res.json();
+
+        console.log('[DriveStorage] ensureFolder: APIレスポンス =', JSON.stringify(data));
+        console.log('[DriveStorage] ensureFolder: 検出フォルダ数 =', data.files ? data.files.length : 0);
+
+        if (data.files && data.files.length > 0) {
+          // 最も古いフォルダ（最初に作られたもの）を使用
+          const chosen = data.files[0];
+          console.log('[DriveStorage] ensureFolder: 既存フォルダを使用 id=' + chosen.id + ' name=' + chosen.name + ' created=' + chosen.createdTime);
+          if (data.files.length > 1) {
+            console.warn('[DriveStorage] ensureFolder: 重複フォルダが ' + data.files.length + ' 個検出されました。最古のフォルダを使用します。');
+            data.files.forEach(function(f, i) {
+              console.warn('  [' + i + '] id=' + f.id + ' name=' + f.name + ' created=' + f.createdTime);
+            });
+          }
+          this.folderId = chosen.id;
+          return this.folderId;
+        }
+
+        // --- フォルダが見つからなかった場合、少し待って再検索（競合対策）---
+        console.log('[DriveStorage] ensureFolder: フォルダ未検出。500ms待機後に再検索します...');
+        await new Promise(function(r) { setTimeout(r, 500); });
+
+        const recheck = await this.apiRequest(searchUrl);
+        const recheckData = await recheck.json();
+        console.log('[DriveStorage] ensureFolder: 再検索レスポンス =', JSON.stringify(recheckData));
+
+        if (recheckData.files && recheckData.files.length > 0) {
+          const chosen = recheckData.files[0];
+          console.log('[DriveStorage] ensureFolder: 再検索で既存フォルダ発見 id=' + chosen.id);
+          this.folderId = chosen.id;
+          return this.folderId;
+        }
+
+        // --- 本当に存在しない場合のみ新規作成 ---
+        console.log('[DriveStorage] ensureFolder: フォルダが存在しないため新規作成します');
+        const createRes = await this.apiRequest('https://www.googleapis.com/drive/v3/files', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: DRIVE_FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' })
+        });
+        const folder = await createRes.json();
+        console.log('[DriveStorage] ensureFolder: 新規フォルダ作成完了 id=' + folder.id);
+        this.folderId = folder.id;
+        return this.folderId;
+      } catch (e) {
+        console.error('[DriveStorage] ensureFolder: エラー発生', e);
+        this._ensureFolderPromise = null;
+        throw e;
+      }
+    })();
+
+    return this._ensureFolderPromise;
+  },
+
+  async findFile(filename) {
+    if (this.fileIds[filename]) return this.fileIds[filename];
+
+    const folderId = await this.ensureFolder();
+    const q = "name='" + filename + "' and '" + folderId + "' in parents and trashed=false";
+    const res = await this.apiRequest(
+      'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=files(id)'
+    );
+    const data = await res.json();
+
+    if (data.files && data.files.length > 0) {
+      this.fileIds[filename] = data.files[0].id;
+      return this.fileIds[filename];
+    }
+    return null;
+  },
+
+  async readJSON(filename) {
+    const fileId = await this.findFile(filename);
+    if (!fileId) return null;
+
+    const res = await this.apiRequest(
+      'https://www.googleapis.com/drive/v3/files/' + fileId + '?alt=media'
+    );
+    return await res.json();
+  },
+
+  async writeJSON(filename, jsonData) {
+    const folderId = await this.ensureFolder();
+    const fileId   = await this.findFile(filename);
+    const jsonStr  = JSON.stringify(jsonData);
+
+    if (fileId) {
+      await this.apiRequest(
+        'https://www.googleapis.com/upload/drive/v3/files/' + fileId + '?uploadType=media',
+        { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: jsonStr }
+      );
+    } else {
+      const metadata = { name: filename, parents: [folderId], mimeType: 'application/json' };
+      const boundary = 'molts_boundary_' + Date.now();
+      const body =
+        '--' + boundary + '\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n' +
+        JSON.stringify(metadata) + '\r\n' +
+        '--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' +
+        jsonStr + '\r\n' +
+        '--' + boundary + '--';
+
+      const res = await this.apiRequest(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+        { method: 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + boundary }, body: body }
+      );
+      const file = await res.json();
+      this.fileIds[filename] = file.id;
+    }
+  }
+};
+
+// ============================================================
+// Google 認証
+// ============================================================
+let tokenClient = null;
+
+function initGoogleAuth() {
+  if (typeof google === 'undefined' || !google.accounts) {
+    console.warn('Google Identity Services が読み込まれていません');
+    return;
+  }
+  if (GOOGLE_CLIENT_ID.startsWith('YOUR_')) {
+    console.warn('GOOGLE_CLIENT_ID が未設定です');
+    return;
+  }
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/drive.file',
+    callback: handleAuthResponse
+  });
+}
+
+async function handleAuthResponse(response) {
+  if (response.error) {
+    console.error('Google auth error:', response);
+    showToast('Googleログインに失敗しました', 'error');
+    return;
+  }
+  DriveStorage.accessToken = response.access_token;
+  updateGdriveStatus(true);
+  showToast('Google Driveに接続しました', 'success');
+  await loadFromDrive();
+}
+
+async function loadFromDrive() {
+  try {
+    const [profiles, history] = await Promise.all([
+      DriveStorage.readJSON(DRIVE_PROFILES_FILE),
+      DriveStorage.readJSON(DRIVE_HISTORY_FILE)
+    ]);
+    if (profiles && typeof profiles === 'object') {
+      cachedProfiles = migrateProfileKeys(profiles);
+      localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(cachedProfiles));
+      syncToDrive(DRIVE_PROFILES_FILE, cachedProfiles);
+    }
+    if (Array.isArray(history)) {
+      cachedHistory = history;
+      localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(cachedHistory));
+    }
+    renderHistory();
+    showToast('Google Driveからデータを読み込みました', 'success');
+  } catch (err) {
+    console.warn('Drive読み込み失敗:', err);
+    showToast('Driveからの読み込みに失敗しました', 'error');
+  }
+}
+
+function signInGoogle() {
+  if (!tokenClient) {
+    showToast('Google認証が初期化されていません。CLIENT_IDを設定してページを再読込してください。', 'error');
+    return;
+  }
+  tokenClient.requestAccessToken();
+}
+
+function signOutGoogle() {
+  if (DriveStorage.accessToken) {
+    google.accounts.oauth2.revoke(DriveStorage.accessToken);
+  }
+  DriveStorage.accessToken = null;
+  DriveStorage.folderId = null;
+  DriveStorage._ensureFolderPromise = null;
+  DriveStorage.fileIds = {};
+  updateGdriveStatus(false);
+  showToast('Google Driveから切断しました', 'success');
+}
+
+function updateGdriveStatus(connected) {
+  const statusEl = document.getElementById('gdriveStatus');
+  const btnEl    = document.getElementById('gdriveBtn');
+  if (connected) {
+    statusEl.classList.add('connected');
+    statusEl.querySelector('span:last-child').textContent = 'Drive接続中';
+    btnEl.textContent = 'ログアウト';
+    btnEl.onclick = signOutGoogle;
+  } else {
+    statusEl.classList.remove('connected');
+    statusEl.querySelector('span:last-child').textContent = 'Drive未接続';
+    btnEl.textContent = 'Googleログイン';
+    btnEl.onclick = signInGoogle;
+  }
+}
+
+// Drive同期ヘルパー — Promiseを返し、呼び出し元で結果をハンドリング可能にする
+async function syncToDrive(filename, data) {
+  if (!DriveStorage.isAuthenticated()) {
+    console.log('[Drive同期] 未認証のためスキップ:', filename);
+    return;
+  }
+  const dataSize = JSON.stringify(data).length;
+  console.log('[Drive同期] 書き込み開始:', filename, '/ データサイズ:', dataSize, '文字');
+  try {
+    await DriveStorage.writeJSON(filename, data);
+    console.log('[Drive同期] 書き込み成功:', filename);
+  } catch (err) {
+    console.error('[Drive同期] 書き込み失敗:', filename, '/ エラー:', err.message, err);
+    showToast('Google Driveへの保存に失敗しました（' + filename + '）', 'error');
+    throw err;
+  }
+}
+
+const FIRST_MSG_TEMPLATE = `はじめまして。突然のご連絡、失礼いたします。
+THE MOLTS代表取締役の海老澤里沙と申します。
+
+今回、{候補者名}さんのプロフィールを拝見し、現在弊社で求めている採用候補者に適していると感じ、ご連絡しました。
+
+それは、{候補者名}さんのこれまでのご経歴や取り組みを拝見し、{パーソナライズ部分}
+
+特に、{志向パーソナライズ}、私達が目指す方向性との強い共通点を感じています。
+
+▼THE MOLTSについて
+当社は、デジタルマーケティングを軸に企業の成長を支援するプロフェッショナル集団です。戦略立案から広告運用、インハウス支援まで幅広く手掛け、スタートアップから上場企業まで500社以上の企業に貢献してきました。
+
+ただ現在クライアントの開発課題を解決していくためにそのポジションにあった方を探しており。
+
+{候補者名}さんのこれまでのご経験・スタンスを拝見し、「一緒に伸ばしていける・支えていけるメンバー」としてお互いに成長できるのではないかと感じつつも、お互いを知らないからこそ話してみるキッカケをもらえればと思っています。
+
+▼採用情報
+https://moltsinc.co.jp/career/
+
+とはいえ、なぜ自分に連絡してきたの？と思われているかもしれません。
+
+それは{候補者名}さんのスキルが活かせそうな場があると思ったからもありますが…。
+ただ、それだけでなく{候補者名}さん自身の仕事への向き合い方やスタンスなどの人間性に惹かれる部分があり、そのマインドこそが本質的な「事業成長」につながり、これまでの経験が全て活かせるのではと感じています。
+
+また、{候補者名}さんのような優れた方とのコネクションを高めていくだけでなく、将来的にお仕事のご相談などの候補先として繋がってもらえればと思っています。
+
+ここまでを読んで、少し話を聞いてみようかな…と思ったら、または、自分のキャリアをどう成長させていくか、着実に実績を作っていくかを考えていたら、まずはカジュアルに情報交換からでも良いのでお話できませんか？
+
+{候補者名}さんと直接お話しできる機会を楽しみにしております！`;
+
+const SECOND_MSG_TEMPLATE = `はじめまして。突然のご連絡、失礼いたします。
+THE MOLTS代表取締役の海老澤里沙と申します。
+
+今回{送付媒体}で{候補者名}さんのプロフィールを拝見し是非一度お話をしたくご連絡していたのですが、{送付媒体}ですと普段ご利用していないサービスの可能性もございましたので、facebookから失礼いたします。
+
+▼THE MOLTSについて
+当社は、デジタルマーケティングを軸に企業の成長を支援するプロフェッショナル集団です。戦略立案から広告運用、インハウス支援まで幅広く手掛け、スタートアップから上場企業まで500社以上の企業に貢献してきました。
+
+ただ現在クライアントの開発課題を解決していくためにそのポジションにあった方を探しており。
+
+{候補者名}さんのこれまでのご経験・スタンスを拝見し、「一緒に伸ばしていける・支えていけるメンバー」としてお互いに成長できるのではないかと感じつつも、お互いを知らないからこそ話してみるキッカケをもらえればと思っています。
+
+▼採用情報
+https://moltsinc.co.jp/career/
+
+とはいえ、なぜ自分に連絡してきたの？と思われているかもしれません。
+
+それは{候補者名}さんのスキルが活かせそうな場があると思ったからもありますが…。
+ただ、それだけでなく{候補者名}さん自身の仕事への向き合い方やスタンスなどの人間性に惹かれる部分があり、そのマインドこそが本質的な「事業成長」につながり、これまでの経験が全て活かせるのではと感じています。
+
+また、{候補者名}さんのような優れた方とのコネクションを高めていくだけでなく、将来的にお仕事のご相談などの候補先として繋がってもらえればと思っています。
+
+ここまでを読んで、少し話を聞いてみようかな…と思ったら、または、自分のキャリアをどう成長させていくか、着実に実績を作っていくかを考えていたら、まずはカジュアルに情報交換からでも良いのでお話できませんか？
+
+{候補者名}さんと直接お話しできる機会を楽しみにしております！`;
+
+const INTERVIEW_TEMPLATE_URL = `この度はご返信いただきありがとうございます。
+ご自身のご経験やスキル、キャリアの方向性を踏まえご興味をお持ちいただけたこと、大変嬉しく思います。
+
+これまでのご経験やスキルをより詳しく拝見させていただきたく、可能であればまずは情報交換を含め、カジュアルにお話をしていただければと思うのですがいかがでしょうか？
+ご都合は{候補者名}さんに合わせていきたいと思いますので、以下URLよりご確認くださいませ。
+
+▼予定確保用URL（海老澤）
+https://timerex.net/s/ebisawa_risa/d7838d0c/
+
+登録完了後、日程のみで大丈夫ですのでご報告いただけますと幸いです。
+{候補者名}さんからのご返信をおまちしております。
+よろしくお願いいたします。`;
+
+const INTERVIEW_TEMPLATE_ASK = `この度はご返信いただきありがとうございます。
+ご自身のご経験やスキル、キャリアの方向性を踏まえご興味をお持ちいただけたこと、大変嬉しく思います。
+
+これまでのご経験やスキルをより詳しく拝見させていただきたく、可能であればまずは情報交換を含め、カジュアルにお話をしていただければと思うのですがいかがでしょうか？
+
+お手数ですが、ご都合の良い日時をいくつかご提示いただけますと幸いです。
+{候補者名}さんのご都合に合わせて調整いたします。
+
+{候補者名}さんからのご返信をおまちしております。
+よろしくお願いいたします。`;
+
+const SYSTEM_PROMPT = `あなたはTHE MOLTSの採用スカウトメッセージ生成AIです。
+
+以下のルールに厳密に従ってメッセージを生成してください:
+
+## 1回目メッセージのルール
+- 提供された雛形をベースにする
+- 「それは、〜のこれまでのご経歴や取り組みを拝見し、」の部分をプロフィールに合わせてパーソナライズする
+- 「特に、〜というお考えに」の部分を候補者の志向に合わせて変更する
+- パーソナライズの優先順位: プロフィール内の思想・志向 > 状況・環境 > スキル
+- 「▼THE MOLTSについて」以降の文章は候補者名以外を変更しない
+- スキルや魅力を箇条書きで書かない
+- 文章量は雛形の情報量を300文字以上超えない
+- 改行位置はそのままに改行自体をなくさない
+
+## 2回目メッセージ（SNS補助連絡）のルール
+- 提供された雛形をベースにする
+- 1回目メッセージの内容を踏襲する
+- 「▼THE MOLTSについて」以降の文章は候補者名以外を変更しない
+
+## 面談設定メッセージのルール
+- 提供された雛形をそのまま使い、候補者名のみ置換する
+
+## 候補者名の表記ルール
+- 候補者名は入力された表記をそのまま使用すること
+- 漢字・ひらがな・カタカナ・ローマ字への変換や推測は絶対に行わないこと
+- 例: 「Marie Furuhashi」と指定された場合、「古橋」「ふるはし」「フルハシ」等に変換せず、必ず「Marie Furuhashi」のまま使用する
+- 「{候補者名}さん」のように敬称を付ける場合も、名前部分は入力そのままの表記を維持すること
+
+## 出力ルール
+- メッセージ本文のみを出力する（前後の説明は不要）
+- マークダウン記法は使わない（**や##などは使わない）
+- 雛形の改行位置をそのまま維持する`;
+
+// --- UI操作 ---
+
+function toggleSetup() {
+  document.getElementById('setupCard').classList.toggle('collapsed');
+}
+
+function saveApiKey() {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  if (!key.startsWith('sk-ant-')) {
+    showToast('正しいAPIキーを入力してください（sk-ant-で始まります）', 'error');
+    return;
+  }
+  localStorage.setItem(STORAGE_KEY_API_KEY, key);
+  updateApiStatus(true);
+  document.getElementById('keySavedMsg').classList.add('show');
+  showToast('APIキーを保存しました', 'success');
+  setTimeout(() => toggleSetup(), 1000);
+}
+
+function updateApiStatus(connected) {
+  const status = document.getElementById('apiStatus');
+  const text   = document.getElementById('apiStatusText');
+  if (connected) {
+    status.className = 'api-status connected';
+    text.textContent = '接続済み';
+  } else {
+    status.className = 'api-status';
+    text.textContent = '未接続';
+  }
+}
+
+function selectPlatform(btn, platform) {
+  document.querySelectorAll('.platform-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedPlatform = platform;
+  localStorage.setItem(STORAGE_KEY_PLATFORM, platform);
+}
+
+function selectMsgType(btn, type) {
+  document.querySelectorAll('.msg-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedMsgType = type;
+  localStorage.setItem(STORAGE_KEY_MSG_TYPE, type);
+  updateFormVisibility();
+}
+
+function updateFormVisibility() {
+  const profileGroup          = document.getElementById('profileGroup');
+  const platformGroup         = document.getElementById('platformGroup');
+  const interviewPatternGroup = document.getElementById('interviewPatternGroup');
+  if (selectedMsgType === 'first') {
+    platformGroup.style.display         = '';
+    profileGroup.style.display          = '';
+    interviewPatternGroup.style.display = 'none';
+  } else if (selectedMsgType === 'interview') {
+    platformGroup.style.display         = 'none';
+    profileGroup.style.display          = 'none';
+    interviewPatternGroup.style.display = '';
+  } else {
+    platformGroup.style.display         = 'none';
+    profileGroup.style.display          = 'none';
+    interviewPatternGroup.style.display = 'none';
+  }
+}
+
+function selectInterviewPattern(btn, pattern) {
+  document.querySelectorAll('#interviewPatternGroup .msg-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  selectedInterviewPattern = pattern;
+}
+
+// --- プロフィール保存・補完 ---
+
+function normalizeName(name) {
+  return name
+    .normalize('NFKC')
+    .replace(/[\s\u3000]+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function cleanProfileKey(key) {
+  // 「今回、Marie Furuhashi」→「Marie Furuhashi」のように接頭辞を除去
+  return key
+    .replace(/^.*?[、，,]\s*/, '')  // 「今回、」等の接頭辞を除去
+    .replace(/^(今回|先日|この度)\s*/, '')  // 句読点なしの接頭辞も除去
+    .replace(/\s*さん\s*$/, '')  // 末尾の「さん」を除去
+    .trim();
+}
+
+function migrateProfileKeys(profiles) {
+  const migrated = {};
+  let changed = false;
+  for (const [key, value] of Object.entries(profiles)) {
+    const cleanKey = cleanProfileKey(key);
+    if (cleanKey !== key) {
+      console.log('[マイグレーション] キー正規化:', JSON.stringify(key), '→', JSON.stringify(cleanKey));
+      changed = true;
+    }
+    // 重複時は長い方（より情報量の多い方）を優先
+    if (!migrated[cleanKey] || value.length > migrated[cleanKey].length) {
+      migrated[cleanKey] = value;
+    }
+  }
+  if (changed) {
+    localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(migrated));
+    console.log('[マイグレーション] 完了。キー数:', Object.keys(profiles).length, '→', Object.keys(migrated).length);
+  }
+  return migrated;
+}
+
+function getSavedProfiles() {
+  return cachedProfiles;
+}
+
+function findProfileByName(inputName) {
+  const normalizedInput = normalizeName(inputName);
+  console.log('[Profile検索] 入力名:', JSON.stringify(inputName), '→ 正規化:', JSON.stringify(normalizedInput));
+  console.log('[Profile検索] 保存済みキー一覧:', Object.keys(cachedProfiles));
+
+  // 完全一致（正規化後）
+  for (const key of Object.keys(cachedProfiles)) {
+    if (normalizeName(key) === normalizedInput) {
+      console.log('[Profile検索] 一致: キー', JSON.stringify(key));
+      return cachedProfiles[key];
+    }
+  }
+
+  // 部分一致（正規化後の入力がキーに含まれる、またはキーが入力に含まれる）
+  for (const key of Object.keys(cachedProfiles)) {
+    const normalizedKey = normalizeName(key);
+    if (normalizedKey.includes(normalizedInput) || normalizedInput.includes(normalizedKey)) {
+      console.log('[Profile検索] 部分一致: キー', JSON.stringify(key));
+      return cachedProfiles[key];
+    }
+  }
+
+  console.warn('[Profile検索] 該当なし');
+  return null;
+}
+
+async function saveProfile(name, profile) {
+  if (!name || !profile) return;
+  cachedProfiles[name] = profile;
+  console.log('[Profile保存] キー:', JSON.stringify(name), '/ データ長:', profile.length, '文字');
+  localStorage.setItem(STORAGE_KEY_PROFILES, JSON.stringify(cachedProfiles));
+  console.log('[Profile保存] localStorage保存完了');
+  try {
+    await syncToDrive(DRIVE_PROFILES_FILE, cachedProfiles);
+    console.log('[Profile保存] Google Drive保存完了');
+  } catch (err) {
+    console.error('[Profile保存] Google Drive保存失敗:', err.message);
+  }
+}
+
+function setupAutocomplete() {
+  const input = document.getElementById('candidateNameInput');
+  const list  = document.getElementById('autocompleteList');
+
+  input.addEventListener('input', () => {
+    const query = input.value.trim();
+    if (!query) { list.classList.remove('show'); return; }
+
+    const profiles = getSavedProfiles();
+    const normalizedQuery = normalizeName(query);
+    const matches  = Object.keys(profiles).filter(name => normalizeName(name).includes(normalizedQuery));
+
+    if (matches.length === 0) { list.classList.remove('show'); return; }
+
+    list.innerHTML = matches.map(name =>
+      `<div class="autocomplete-item" data-name="${name}">${name}</div>`
+    ).join('');
+    list.classList.add('show');
+
+    list.querySelectorAll('.autocomplete-item').forEach(item => {
+      item.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const name = item.dataset.name;
+        input.value = name;
+        list.classList.remove('show');
+        // プロフィール入力が表示されている場合のみ自動補完
+        if (selectedMsgType !== 'interview') {
+          document.getElementById('profileInput').value = profiles[name];
+          localStorage.setItem(STORAGE_KEY_PROFILE, profiles[name]);
+        }
+      });
+    });
+  });
+
+  input.addEventListener('blur', () => {
+    setTimeout(() => list.classList.remove('show'), 150);
+    checkDuplicateFirstMessage(input.value.trim());
+  });
+}
+
+// --- 初回メッセージ重複チェック ---
+
+function checkDuplicateFirstMessage(name) {
+  if (!name) return;
+  if (selectedMsgType !== 'first') return;
+
+  const normalizedInput = normalizeName(name);
+  const history = getHistory();
+  const duplicate = history.find(entry =>
+    entry.msgType === 'first' && normalizeName(entry.candidateName) === normalizedInput
+  );
+
+  if (!duplicate) return;
+
+  const dateStr = formatDate(duplicate.date);
+  const platform = duplicate.platform || '不明';
+  const msg = `${name}さんには${platform}にて\n${dateStr}に初回メッセージを送付済みです。\n続けて生成しますか？`;
+
+  document.getElementById('duplicateMessage').textContent = msg;
+  document.getElementById('duplicateOverlay').classList.add('show');
+}
+
+function closeDuplicateModal(shouldCancel) {
+  document.getElementById('duplicateOverlay').classList.remove('show');
+  if (shouldCancel) {
+    document.getElementById('candidateNameInput').value = '';
+    document.getElementById('candidateNameInput').focus();
+  }
+}
+
+function showToast(msg, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = 'toast show ' + type;
+  setTimeout(() => { toast.className = 'toast'; }, 3000);
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.classList.add('show');
+}
+function hideError() {
+  document.getElementById('errorBox').classList.remove('show');
+}
+
+// --- メッセージ生成 ---
+
+async function generateMessage() {
+  const apiKey = localStorage.getItem(STORAGE_KEY_API_KEY);
+  if (!apiKey) {
+    showError('APIキーが設定されていません。右上の「設定」からAPIキーを入力してください。');
+    return;
+  }
+
+  const inputName = document.getElementById('candidateNameInput').value.trim();
+  if (!inputName) {
+    showError('候補者名を入力してください。');
+    return;
+  }
+  let profile = '';
+
+  if (selectedMsgType === 'first') {
+    profile = document.getElementById('profileInput').value.trim();
+    if (!profile) {
+      showError('プロフィール情報を入力してください。');
+      return;
+    }
+    await saveProfile(inputName, profile);
+  } else {
+    profile = findProfileByName(inputName);
+    if (!profile) {
+      showError('「' + inputName + '」のプロフィール情報が見つかりません。先に「初回メッセージ」でプロフィールを登録してください。');
+      return;
+    }
+  }
+
+  hideError();
+
+  let userPrompt = '';
+  let labelText  = '';
+
+  if (selectedMsgType === 'first') {
+    userPrompt = `以下のプロフィール情報を元に、1回目のスカウトメッセージを作成してください。
+送付媒体: ${selectedPlatform}
+
+## 候補者名（この表記をそのまま使用すること）
+${inputName}
+
+## 雛形
+${FIRST_MSG_TEMPLATE}
+
+## 候補者プロフィール情報
+${profile}`;
+    labelText = `■ 初回メッセージ（${selectedPlatform}）`;
+
+  } else if (selectedMsgType === 'second') {
+    userPrompt = `以下のプロフィール情報を元に、2回目のSNS補助連絡メッセージを作成してください。
+1回目の送付媒体: ${selectedPlatform}
+
+## 候補者名（この表記をそのまま使用すること）
+${inputName}
+
+## 雛形
+${SECOND_MSG_TEMPLATE}
+
+## 候補者プロフィール情報
+${profile}`;
+    labelText = `■ 2回目メッセージ（SNS補助連絡）`;
+
+  } else if (selectedMsgType === 'interview') {
+    // 面談設定はAPI不要 — テンプレートの候補者名をローカルで置換
+    const template = selectedInterviewPattern === 'ask' ? INTERVIEW_TEMPLATE_ASK : INTERVIEW_TEMPLATE_URL;
+    const patternLabel = selectedInterviewPattern === 'ask' ? '候補日時確認版' : 'URL送付版';
+    currentMessage = template.replace(/\{候補者名\}/g, inputName);
+    candidateName = inputName;
+
+    document.getElementById('resultLabel').textContent = `■ 面談設定メッセージ（${patternLabel}）`;
+    document.getElementById('messageContent').textContent = currentMessage;
+    document.getElementById('resultsCard').classList.add('show');
+    document.getElementById('resultsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    await addHistoryEntry({
+      date: new Date().toISOString(),
+      candidateName: inputName,
+      platform: selectedPlatform,
+      msgType: selectedMsgType,
+      profile: '',
+      message: currentMessage
+    });
+    return;
+  }
+
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('resultsCard').classList.remove('show');
+  document.getElementById('generateBtn').disabled = true;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `API Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    currentMessage = data.content[0].text;
+    candidateName = inputName;
+
+    document.getElementById('resultLabel').textContent = labelText;
+    document.getElementById('messageContent').textContent = currentMessage;
+    document.getElementById('resultsCard').classList.add('show');
+    document.getElementById('resultsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // 履歴に保存
+    await addHistoryEntry({
+      date: new Date().toISOString(),
+      candidateName: inputName,
+      platform: selectedPlatform,
+      msgType: selectedMsgType,
+      profile: profile || '',
+      message: currentMessage
+    });
+
+  } catch (error) {
+    showError('エラーが発生しました: ' + error.message);
+  } finally {
+    document.getElementById('loading').classList.remove('show');
+    document.getElementById('generateBtn').disabled = false;
+  }
+}
+
+// --- コピー・ダウンロード ---
+
+function copyMessage() {
+  navigator.clipboard.writeText(currentMessage).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    btn.textContent = 'コピーしました';
+    btn.classList.add('copied');
+    showToast('クリップボードにコピーしました', 'success');
+    setTimeout(() => {
+      btn.textContent = 'コピー';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function downloadMessage() {
+  const today   = new Date();
+  const dateStr = today.getFullYear() +
+    String(today.getMonth() + 1).padStart(2, '0') +
+    String(today.getDate()).padStart(2, '0');
+  const filenameMap = {
+    first:     `${dateStr}_${candidateName}_${selectedPlatform}初回メッセージ.txt`,
+    second:    `${dateStr}_${candidateName}_SNS補助連絡メッセージ.txt`,
+    interview: `${dateStr}_${candidateName}_面談設定メッセージ.txt`,
+  };
+  const blob = new Blob([currentMessage], { type: 'text/plain;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = filenameMap[selectedMsgType];
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('ダウンロードしました', 'success');
+}
+
+// --- 履歴管理 ---
+
+function getHistory() {
+  return cachedHistory;
+}
+
+async function addHistoryEntry(entry) {
+  cachedHistory.unshift(entry);
+  localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(cachedHistory));
+  console.log('[履歴保存] localStorage保存完了 / 候補者:', entry.candidateName, '/ 種別:', entry.msgType);
+  renderHistory();
+
+  // Drive保存を試行（失敗してもlocalStorageには残る）
+  try {
+    await syncToDrive(DRIVE_HISTORY_FILE, cachedHistory);
+    console.log('[履歴保存] Google Drive保存完了 / 候補者:', entry.candidateName);
+  } catch (err) {
+    console.error('[履歴保存] Google Drive保存失敗 / 候補者:', entry.candidateName, '/ エラー:', err.message);
+    showError('Google Driveへの履歴保存に失敗しました（候補者: ' + entry.candidateName + '）。ローカルには保存済みです。Driveの接続状態を確認し、再度お試しください。');
+  }
+}
+
+function clearHistory() {
+  if (!confirm('生成履歴をすべて削除しますか？')) return;
+  cachedHistory = [];
+  localStorage.removeItem(STORAGE_KEY_HISTORY);
+  syncToDrive(DRIVE_HISTORY_FILE, []);
+  renderHistory();
+  showToast('履歴を削除しました', 'success');
+}
+
+function toggleHistory() {
+  document.getElementById('historyCard').classList.toggle('collapsed');
+}
+
+function toggleHistoryItem(el) {
+  el.closest('.history-item').classList.toggle('collapsed');
+}
+
+function toggleHistoryProfile(btn) {
+  const content = btn.closest('.history-item-body').querySelector('.history-profile-content');
+  const isShow = content.classList.toggle('show');
+  btn.textContent = isShow ? '入力プロフィールを閉じる' : '入力プロフィールを表示';
+}
+
+function copyHistoryMessage(index) {
+  const history = getHistory();
+  if (!history[index]) return;
+  navigator.clipboard.writeText(history[index].message).then(() => {
+    const btn = document.getElementById('histCopy' + index);
+    btn.textContent = 'コピーしました';
+    btn.classList.add('copied');
+    showToast('クリップボードにコピーしました', 'success');
+    setTimeout(() => {
+      btn.textContent = 'コピー';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+function formatDate(isoStr) {
+  const d = new Date(isoStr);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${y}/${m}/${day} ${h}:${min}`;
+}
+
+function msgTypeLabel(type) {
+  const map = { first: '初回', second: '2回目(SNS)', interview: '面談設定' };
+  return map[type] || type;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function renderHistory() {
+  const history = getHistory();
+  const countEl = document.getElementById('historyCount');
+  const listEl  = document.getElementById('historyList');
+  countEl.textContent = history.length + '件';
+
+  if (history.length === 0) {
+    listEl.innerHTML = '<div class="history-empty">まだ生成履歴がありません</div>';
+    return;
+  }
+
+  listEl.innerHTML = history.map((entry, i) => `
+    <div class="history-item collapsed">
+      <div class="history-item-header" onclick="toggleHistoryItem(this)">
+        <div class="history-item-meta">
+          <span class="history-date">${formatDate(entry.date)}</span>
+          <span class="history-name">${escapeHtml(entry.candidateName || '不明')}</span>
+          <span class="history-badge ${entry.msgType}">${msgTypeLabel(entry.msgType)}</span>
+          <span class="history-badge platform">${escapeHtml(entry.platform)}</span>
+        </div>
+        <span class="history-item-toggle">▼</span>
+      </div>
+      <div class="history-item-body">
+        <div class="history-msg-content">${escapeHtml(entry.message)}</div>
+        <div class="history-item-footer">
+          ${entry.profile ? `<button class="history-profile-toggle" onclick="event.stopPropagation(); toggleHistoryProfile(this)">入力プロフィールを表示</button>` : '<span></span>'}
+          <button class="btn-copy" id="histCopy${i}" onclick="event.stopPropagation(); copyHistoryMessage(${i})">コピー</button>
+        </div>
+        ${entry.profile ? `<div class="history-profile-content">${escapeHtml(entry.profile)}</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+// --- 起動時: localStorage から状態を復元 ---
+
+window.addEventListener('load', () => {
+  // localStorageからキャッシュを復元（Drive未接続時のフォールバック）
+  try {
+    cachedProfiles = JSON.parse(localStorage.getItem(STORAGE_KEY_PROFILES)) || {};
+  } catch { cachedProfiles = {}; }
+  try {
+    cachedHistory = JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORY)) || [];
+  } catch { cachedHistory = []; }
+
+  // 既存の汚染キーを正規化するマイグレーション
+  cachedProfiles = migrateProfileKeys(cachedProfiles);
+
+  // APIキー
+  const apiKey = localStorage.getItem(STORAGE_KEY_API_KEY);
+  if (apiKey) {
+    document.getElementById('apiKeyInput').value = apiKey;
+    document.getElementById('keySavedMsg').classList.add('show');
+    updateApiStatus(true);
+  } else {
+    document.getElementById('setupCard').classList.remove('collapsed');
+  }
+
+  // 媒体
+  const platform = localStorage.getItem(STORAGE_KEY_PLATFORM) || 'LinkedIn';
+  const platformBtn = document.querySelector(`.platform-btn[data-platform="${platform}"]`);
+  if (platformBtn) selectPlatform(platformBtn, platform);
+
+  // メッセージ種別
+  const msgType = localStorage.getItem(STORAGE_KEY_MSG_TYPE) || 'first';
+  const msgTab  = document.querySelector(`.msg-tab[data-type="${msgType}"]`);
+  if (msgTab) selectMsgType(msgTab, msgType);
+
+  // プロフィール・候補者名は起動時に空にする（履歴から確認可能なため）
+  localStorage.removeItem(STORAGE_KEY_PROFILE);
+
+  // フォーム表示切り替えの初期化
+  updateFormVisibility();
+
+  // オートコンプリートの初期化
+  setupAutocomplete();
+
+  // 履歴の描���
+  renderHistory();
+
+  // Google認証の初期化（GISスクリプトの読み込み完了を待つ）
+  const initGIS = () => {
+    if (typeof google !== 'undefined' && google.accounts) {
+      initGoogleAuth();
+    } else {
+      setTimeout(initGIS, 200);
+    }
+  };
+  initGIS();
+});
+</script>
+
+</body>
+</html>
